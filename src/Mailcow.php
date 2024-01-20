@@ -116,4 +116,73 @@ class Server_Manager_Mailcow extends Server_Manager
         return true;
     }
 
+    /**
+     * Methods retrieves information from server, assign's new values to
+     * cloned Server_Account object and returns it.
+     *
+     * @return Server_Account
+     */
+    public function synchronizeAccount(Server_Account $a)
+    {
+        $this->getLog()->info('Synchronizing account with server ' . $a->getUsername());
+        $new = clone $a;
+
+        // @example - retrieve username from server and set it to cloned object
+        // $new->setUsername('newusername');
+        return $new;
+    }
+
+    /**
+     * Create new account on server.
+     */
+    public function createAccount(Server_Account $a)
+    {
+        $p = $a->getPackage();
+        $client = $a->getClient();
+        // Prepare POST query
+        $domaindata = [
+            'json' => [
+                "active" => "1",
+                "aliases" => $p->getMaxSubdomains(),
+                "backupmx" => "0",
+                "defquota" => $p->getQuota(),
+                "description" => $a->getDomain() . " domain",
+                "domain" => $a->getDomain(),
+                "mailboxes" => $p->getMaxPop(),
+                "maxquota" => "10240",
+                "quota" => "10240",
+                "relay_all_recipients" => "0",
+                "rl_frame" => "s",
+                "rl_value" => "10",
+                "restart_sogo" => "10",
+            ]
+        ];
+        // Create domain on mailcow
+        $result1 = $this->_makeRequest('POST', 'add/domain', $domaindata);
+        if (str_contains($result1, 'success') {
+            // Create Domain Admin in mailcow
+            $domainAdminData = [
+                'json' => [
+                    "active" => "1",
+                    "domains" => $a->getDomain(),
+                    "password" => $a->getPassword(),
+                    "password2" => $a->getPassword(),
+                    "username" => "adm_" . str_replace(".", "", $a->getDomain())
+                ]
+            ];
+            $result2 = $this->_makeRequest('POST', 'add/domain-admin', $domainAdminData);
+
+        } else {
+            $placeholders = [':action:' => __trans('create user'), ':type:' => 'Mailcow'];
+
+            throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
+        }
+        if (! str_contains($result2, 'success')) {
+            $placeholders = [':action:' => __trans('create domain'), ':type:' => 'Mailcow'];
+
+            throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
+        }
+        return true;
+    }
+
 }
