@@ -229,4 +229,41 @@ class Server_Manager_Mailcow extends Server_Manager
         return true;
     }
 
+    /**
+     * Cancel account on server.
+     */
+    public function cancelAccount(Server_Account $a)
+    {
+        $p = $a->getPackage();
+        $client = $a->getClient();
+        // Prepare POST query
+        $domaindata = [
+            'body' => [
+                $a->getDomain(),
+            ]
+        ];
+        // Delete domain on mailcow
+        $result1 = $this->_makeRequest('POST', 'delete/domain', $domaindata);
+        if (str_contains($result1, 'success') {
+            // Delete Domain Admin in mailcow
+            $domainAdminData = [
+                'body' => [
+                    "adm_" . str_replace(".", "", $a->getDomain()),
+                ]
+            ];
+            $result2 = $this->_makeRequest('POST', 'delete/domain-admin', $domainAdminData);
+
+        } else {
+            $placeholders = [':action:' => __trans('delete user'), ':type:' => 'Mailcow'];
+
+            throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
+        }
+        if (! str_contains($result2, 'success')) {
+            $placeholders = [':action:' => __trans('delete domain'), ':type:' => 'Mailcow'];
+
+            throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
+        }
+        return true;
+    }
+
 }
