@@ -185,4 +185,48 @@ class Server_Manager_Mailcow extends Server_Manager
         return true;
     }
 
+    /**
+     * Suspend account on server.
+     */
+    public function suspendAccount(Server_Account $a)
+    {
+        $domainData = [
+            'json' => [
+                "attr" => [
+                    "active" => "0",
+                ],
+                "items" => $a->getDomain(),
+            ]
+        ]
+        // Make request and suspend user
+        $result = $this->_makeRequest('POST', 'edit/domain', $domainData);
+        if (!str_contains($result, 'success')) {
+            $placeholders = [':action:' => __trans('suspend account'), ':type:' => 'Mailcow'];
+            throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
+        }
+        return true;
+    }
+
+    /**
+     * Unsuspend account on server.
+     */
+    public function unsuspendAccount(Server_Account $a)
+    {
+        $domainData = [
+            'json' => [
+                "attr" => [
+                    "active" => "1",
+                ],
+                "items" => $a->getDomain(),
+            ]
+        ]
+        // Make request and suspend user
+        $result = $this->_makeRequest('POST', 'edit/domain', $domainData);
+        if (!str_contains($result, 'success')) {
+            $placeholders = [':action:' => __trans('unsuspend account'), ':type:' => 'Mailcow'];
+            throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
+        }
+        return true;
+    }
+
 }
