@@ -140,7 +140,7 @@ class Server_Manager_Mailcow extends Server_Manager
         $p = $a->getPackage();
         $client = $a->getClient();
         // Prepare POST query
-        $domaindata = [
+        $domainData = [
             'json' => [
                 "active" => "1",
                 "aliases" => $p->getMaxSubdomains(),
@@ -158,7 +158,7 @@ class Server_Manager_Mailcow extends Server_Manager
             ]
         ];
         // Create domain on mailcow
-        $result1 = $this->_makeRequest('POST', 'add/domain', $domaindata);
+        $result1 = $this->_makeRequest('POST', 'add/domain', $domainData);
         if (str_contains($result1, 'success') {
             // Create Domain Admin in mailcow
             $domainAdminData = [
@@ -237,13 +237,13 @@ class Server_Manager_Mailcow extends Server_Manager
         $p = $a->getPackage();
         $client = $a->getClient();
         // Prepare POST query
-        $domaindata = [
+        $domainData = [
             'body' => [
                 $a->getDomain(),
             ]
         ];
         // Delete domain on mailcow
-        $result1 = $this->_makeRequest('POST', 'delete/domain', $domaindata);
+        $result1 = $this->_makeRequest('POST', 'delete/domain', $domainData);
         if (str_contains($result1, 'success') {
             // Delete Domain Admin in mailcow
             $domainAdminData = [
@@ -263,6 +263,33 @@ class Server_Manager_Mailcow extends Server_Manager
 
             throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
         }
+        return true;
+    }
+
+    /**
+     * Change account package on server.
+     */
+    public function changeAccountPackage(Server_Account $a, Server_Package $p)
+    {
+        // Prepare POST query
+        $pacakgeData = [
+            'json' => [
+                "attr" =>  [
+                    "aliases" => $p->getMaxSubdomains(),
+                "defquota" => $p->getQuota(),
+                "mailboxes" => $p->getMaxPop(),
+                ],
+                "items" => $a->getDomain(),
+            ]
+        ];
+        // Edit domain on mailcow
+        $result = $this->_makeRequest('POST', 'edit/domain', $domainData);
+        if (!str_contains($result, 'success')) {
+            $placeholders = [':action:' => __trans('change account package'), ':type:' => 'Mailcow'];
+
+            throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
+        } 
+
         return true;
     }
 
