@@ -42,6 +42,16 @@ class Server_Manager_Mailcow extends Server_Manager
     }
 
     /**
+     * Override default username generator method
+     *
+     * @return string
+     */
+    public function generateUsername($domainName)
+    {
+        return     "adm_" . str_replace(".", "", $domainName);
+    }
+
+    /**
      * Returns link to account management page.
      *
      * @return string
