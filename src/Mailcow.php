@@ -77,7 +77,7 @@ class Server_Manager_Mailcow extends Server_Manager
 
         // Server headers
         $headers['X-API-Key'] = $this->_config['accesshash'];
-        $headers['Content-Type'] = 'application/json';
+        $headers['Content-Type'] = "application/json";
 
         // Send POST query
         $client = $this->getHttpClient()->withOptions([
@@ -87,14 +87,14 @@ class Server_Manager_Mailcow extends Server_Manager
         ]);
         $response = $client->request($type, $host . $path, [
             'headers' => $headers,
-            ...$params
+           ...$params 
         ]);
         $result = $response->getContent();
 
         if (str_contains($result, 'authentication failed')) {
             throw new Server_Exception('Failed to connect to the :type: server. Please verify your credentials and configuration', [':type:' => 'Mailcow']);
         } elseif (str_contains($result, 'error')) {
-            error_log("Mailcow returned error $result for the " . $path . ' command');]
+            error_log("Mailcow returned error $result for the " . $path . ' command');
         }
 
         return $result;
@@ -156,6 +156,7 @@ class Server_Manager_Mailcow extends Server_Manager
                 "active" => "1",
                 "aliases" => $p->getMaxSubdomains(),
                 "backupmx" => "0",
+                "gal" => true,
                 "defquota" => $p->getQuota(),
                 "description" => $a->getDomain() . " domain",
                 "domain" => $a->getDomain(),
@@ -182,14 +183,14 @@ class Server_Manager_Mailcow extends Server_Manager
                 ]
             ];
             $result2 = $this->_makeRequest('POST', 'add/domain-admin', $domainAdminData);
+            if (! str_contains($result2, 'success')) {
+                $placeholders = [':action:' => __trans('create domain'), ':type:' => 'Mailcow'];
+
+                throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
+            }
 
         } else {
             $placeholders = [':action:' => __trans('create user'), ':type:' => 'Mailcow'];
-
-            throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
-        }
-        if (! str_contains($result2, 'success')) {
-            $placeholders = [':action:' => __trans('create domain'), ':type:' => 'Mailcow'];
 
             throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
         }
@@ -245,11 +246,9 @@ class Server_Manager_Mailcow extends Server_Manager
      */
     public function cancelAccount(Server_Account $a)
     {
-        $p = $a->getPackage();
-        $client = $a->getClient();
         // Prepare POST query
         $domainData = [
-            'body' => [
+            'json' => [
                 $a->getDomain(),
             ]
         ];
@@ -258,23 +257,23 @@ class Server_Manager_Mailcow extends Server_Manager
         if (str_contains($result1, 'success')) {
             // Delete Domain Admin in mailcow
             $domainAdminData = [
-                'body' => [
+                'json' => [
                     "adm_" . str_replace(".", "", $a->getDomain()),
                 ]
             ];
             $result2 = $this->_makeRequest('POST', 'delete/domain-admin', $domainAdminData);
 
-        } else {
+            if (! str_contains($result2, 'success')) {
+                $placeholders = [':action:' => __trans('delete domain'), ':type:' => 'Mailcow'];
+
+                throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
+
+            } } else {
             $placeholders = [':action:' => __trans('delete user'), ':type:' => 'Mailcow'];
 
             throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
-        }
-        if (! str_contains($result2, 'success')) {
-            $placeholders = [':action:' => __trans('delete domain'), ':type:' => 'Mailcow'];
-
-            throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
-        }
-        return true;
+                }       
+            return true;
     }
 
     /**
