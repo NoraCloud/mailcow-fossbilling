@@ -219,7 +219,7 @@ class Server_Manager_Mailcow extends Server_Manager
                 ],
                 "items" => $a->getDomain(),
             ]
-        ]
+        ];
         // Make request and suspend user
         $result = $this->_makeRequest('POST', 'edit/domain', $domainData);
         if (!str_contains($result, 'success')) {
@@ -244,7 +244,7 @@ class Server_Manager_Mailcow extends Server_Manager
         ];
         // Delete domain on mailcow
         $result1 = $this->_makeRequest('POST', 'delete/domain', $domainData);
-        if (str_contains($result1, 'success') {
+        if (str_contains($result1, 'success')) {
             // Delete Domain Admin in mailcow
             $domainAdminData = [
                 'body' => [
@@ -316,15 +316,15 @@ class Server_Manager_Mailcow extends Server_Manager
     {
         $domainAdminData = [
             'json' => [
-
                 "items" => [
                     "adm_" . str_replace(".", "", $a->getDomain())
                 ],
                 "attr" => [ 
                     "password" => $new,
                     "password2" => $new
-                ]
-            ]
+                ],
+            ],
+        ];
             // Make request and change password
             $result = $this->_makeRequest('POST', 'edit/domain-admin', $domainAdminData);
         if (! str_contains($result, 'success')) {
