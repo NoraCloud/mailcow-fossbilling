@@ -293,4 +293,54 @@ class Server_Manager_Mailcow extends Server_Manager
         return true;
     }
 
+    /**
+     * Change account username on server.
+     */
+    public function changeAccountUsername(Server_Account $a, $new): never
+    {
+        throw new Server_Exception(':type: does not support :action:', [':type:' => 'Mailcow', ':action:' => __trans('username changes')]);
+    }
+
+    /**
+     * Change account domain on server.
+     */
+    public function changeAccountDomain(Server_Account $a, $new): never
+    {
+        throw new Server_Exception(':type: does not support :action:', [':type:' => 'Mailcow', ':action:' => __trans('changing the account domain')]);
+    }
+
+    /**
+     * Change account password on server.
+     */
+    public function changeAccountPassword(Server_Account $a, $new)
+    {
+        $domainAdminData = [
+            'json' => [
+
+                "items" => [
+                    "adm_" . str_replace(".", "", $a->getDomain())
+                ],
+                "attr" => [ 
+                    "password" => $new,
+                    "password2" => $new
+                ]
+            ]
+            // Make request and change password
+            $result = $this->_makeRequest('POST', 'edit/domain-admin', $domainAdminData);
+        if (! str_contains($result, 'success')) {
+            $placeholders = [':action:' => __trans('change account password'), ':type:' => 'Mailcow'];
+
+            throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
+        }
+
+        return true;
+    }
+
+    /**
+     * Change account IP on server.
+     */
+    public function changeAccountIp(Server_Account $a, $new): never
+    {
+        throw new Server_Exception(':type: does not support :action:', [':type:' => 'Mailcow', ':action:' => __trans('changing the account IP')]);
+    }
 }
