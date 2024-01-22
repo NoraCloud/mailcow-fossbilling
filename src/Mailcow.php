@@ -75,25 +75,26 @@ class Server_Manager_Mailcow extends Server_Manager
     {
         $host = 'https://' . $this->_config['host'] . '/api/v1/';
 
-        // Server credentials
+        // Server headers
         $headers['X-API-Key'] = $this->_config['accesshash'];
+        $headers['Content-Type'] = 'application/json';
 
         // Send POST query
         $client = $this->getHttpClient()->withOptions([
             'verify_peer' => false,
             'verify_host' => false,
-            'timeout' => 10
+            'timeout' => 25
         ]);
         $response = $client->request($type, $host . $path, [
             'headers' => $headers,
-            'body' => $params != [] ? $params : null
+            ...$params
         ]);
         $result = $response->getContent();
 
         if (str_contains($result, 'authentication failed')) {
             throw new Server_Exception('Failed to connect to the :type: server. Please verify your credentials and configuration', [':type:' => 'Mailcow']);
         } elseif (str_contains($result, 'error')) {
-            error_log("Mailcow returned error $result for the " . $params['cmd'] . 'command');
+            error_log("Mailcow returned error $result for the " . $path . ' command');]
         }
 
         return $result;
