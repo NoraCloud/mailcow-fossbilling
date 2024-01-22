@@ -164,8 +164,8 @@ class Server_Manager_Mailcow extends Server_Manager
                 "maxquota" => "10240",
                 "quota" => "10240",
                 "relay_all_recipients" => "0",
-                "rl_frame" => "s",
-                "rl_value" => "10",
+                "rl_frame" => "h",
+                "rl_value" => "200",
                 "restart_sogo" => "10",
             ]
         ];
