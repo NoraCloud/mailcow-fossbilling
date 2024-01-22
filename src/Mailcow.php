@@ -159,7 +159,7 @@ class Server_Manager_Mailcow extends Server_Manager
         ];
         // Create domain on mailcow
         $result1 = $this->_makeRequest('POST', 'add/domain', $domainData);
-        if (str_contains($result1, 'success') {
+        if (str_contains($result1, 'success')) {
             // Create Domain Admin in mailcow
             $domainAdminData = [
                 'json' => [
@@ -197,7 +197,7 @@ class Server_Manager_Mailcow extends Server_Manager
                 ],
                 "items" => $a->getDomain(),
             ]
-        ]
+        ];
         // Make request and suspend user
         $result = $this->_makeRequest('POST', 'edit/domain', $domainData);
         if (!str_contains($result, 'success')) {
