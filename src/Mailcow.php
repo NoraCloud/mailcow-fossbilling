@@ -276,8 +276,8 @@ class Server_Manager_Mailcow extends Server_Manager
             'json' => [
                 "attr" =>  [
                     "aliases" => $p->getMaxSubdomains(),
-                "defquota" => $p->getQuota(),
-                "mailboxes" => $p->getMaxPop(),
+                    "defquota" => $p->getQuota(),
+                    "mailboxes" => $p->getMaxPop(),
                 ],
                 "items" => $a->getDomain(),
             ]
