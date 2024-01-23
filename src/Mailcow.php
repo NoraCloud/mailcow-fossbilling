@@ -87,7 +87,7 @@ class Server_Manager_Mailcow extends Server_Manager
         ]);
         $response = $client->request($type, $host . $path, [
             'headers' => $headers,
-           ...$params 
+            ...$params 
         ]);
         $result = $response->getContent();
 
@@ -184,40 +184,40 @@ class Server_Manager_Mailcow extends Server_Manager
             ];
             $result2 = $this->_makeRequest('POST', 'add/domain-admin', $domainAdminData);
             if (str_contains($result2, 'success')) {
-            
-            
-            $domainAclData = [
-                'json' => [
-                    "items" => [
-                        "adm_" . str_replace(".", "", $a->getDomain())
-                    ],
-                    "attr" => [
-                        "da_acl" => [
-      "quarantine",
-      "login_as",
-      "sogo_access",
-      "app_passwds",
-      "bcc_maps",
-      "filters",
-      "spam_policy",
-      "protocol_access",
-      "smtp_ip_access",
-    ]
+
+
+                $domainAclData = [
+                    'json' => [
+                        "items" => [
+                            "adm_" . str_replace(".", "", $a->getDomain())
+                        ],
+                        "attr" => [
+                            "da_acl" => [
+                                "quarantine",
+                                "login_as",
+                                "sogo_access",
+                                "app_passwds",
+                                "bcc_maps",
+                                "filters",
+                                "spam_policy",
+                                "protocol_access",
+                                "smtp_ip_access",
+                            ]
+                        ]
                     ]
-                ]
-            ];
-            $result3 = $this->_makeRequest('POST', 'edit/da-acl', $domainAclData);
-            if (!str_contains($result3, 'success')) {
-               $placeholders = [':action:' => 'edit ACL', ':type:' => 'Mailcow'];
+                ];
+                $result3 = $this->_makeRequest('POST', 'edit/da-acl', $domainAclData);
+                if (!str_contains($result3, 'success')) {
+                    $placeholders = [':action:' => 'edit ACL', ':type:' => 'Mailcow'];
 
-                throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
-            
+                    throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
 
-            } 
-            
-            
-            
-            
+
+                } 
+
+
+
+
             }
             else {
                 $placeholders = [':action:' => __trans('create domain'), ':type:' => 'Mailcow'];
@@ -307,13 +307,13 @@ class Server_Manager_Mailcow extends Server_Manager
 
                 throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
 
-            } */
+        } */
         } else {
             $placeholders = [':action:' => __trans('delete user'), ':type:' => 'Mailcow'];
 
             throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
-                }       
-            return true;
+        }       
+        return true;
     }
 
     /**
@@ -375,8 +375,8 @@ class Server_Manager_Mailcow extends Server_Manager
                 ],
             ],
         ];
-            // Make request and change password
-            $result = $this->_makeRequest('POST', 'edit/domain-admin', $domainAdminData);
+        // Make request and change password
+        $result = $this->_makeRequest('POST', 'edit/domain-admin', $domainAdminData);
         if (! str_contains($result, 'success')) {
             $placeholders = [':action:' => __trans('change account password'), ':type:' => 'Mailcow'];
 
