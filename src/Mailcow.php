@@ -297,14 +297,18 @@ class Server_Manager_Mailcow extends Server_Manager
                     "adm_" . str_replace(".", "", $a->getDomain()),
                 ]
             ];
-            $result2 = $this->_makeRequest('POST', 'delete/domain-admin', $domainAdminData);
+            /*
+             *    NOTE : THE DOMAIN ADMIN SEEMS TO BE DELETE WHEN DELETEING DOMAIN
+             *
+             * $result2 = $this->_makeRequest('POST', 'delete/domain-admin', $domainAdminData);
 
             if (! str_contains($result2, 'success')) {
                 $placeholders = [':action:' => __trans('delete domain'), ':type:' => 'Mailcow'];
 
                 throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
 
-            } } else {
+            } */
+        } else {
             $placeholders = [':action:' => __trans('delete user'), ':type:' => 'Mailcow'];
 
             throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
