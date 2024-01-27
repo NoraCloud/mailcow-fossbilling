@@ -161,14 +161,15 @@ class Server_Manager_Mailcow extends Server_Manager
                 "description" => $a->getDomain() . " domain",
                 "domain" => $a->getDomain(),
                 "mailboxes" => $p->getMaxPop(),
-                "maxquota" => "10240",
-                "quota" => "10240",
+                "maxquota" => $p->getCustomValue('maxquota'),
+                "quota" => $p->getCustomValue('maxquota'),
                 "relay_all_recipients" => "0",
                 "rl_frame" => "h",
-                "rl_value" => "200",
+                "rl_value" => $p->getCustomValue('ratelimit'),
                 "restart_sogo" => "10",
             ]
         ];
+
         // Create domain on mailcow
         $result1 = $this->_makeRequest('POST', 'add/domain', $domainData);
         if (str_contains($result1, 'success')) {
@@ -179,7 +180,7 @@ class Server_Manager_Mailcow extends Server_Manager
                     "domains" => $a->getDomain(),
                     "password" => $a->getPassword(),
                     "password2" => $a->getPassword(),
-                    "username" => "adm_" . str_replace(".", "", $a->getDomain())
+                    "username" => $this->generateUsername($a->getDomain())
                 ]
             ];
             $result2 = $this->_makeRequest('POST', 'add/domain-admin', $domainAdminData);
@@ -189,7 +190,7 @@ class Server_Manager_Mailcow extends Server_Manager
                 $domainAclData = [
                     'json' => [
                         "items" => [
-                            "adm_" . str_replace(".", "", $a->getDomain())
+                            $this->generateUsername($a->getDomain())
                         ],
                         "attr" => [
                             "da_acl" => [
@@ -294,7 +295,7 @@ class Server_Manager_Mailcow extends Server_Manager
             // Delete Domain Admin in mailcow
             $domainAdminData = [
                 'json' => [
-                    "adm_" . str_replace(".", "", $a->getDomain()),
+                    $this->generateUsername($a->getDomain()),
                 ]
             ];
             /*
@@ -367,7 +368,7 @@ class Server_Manager_Mailcow extends Server_Manager
         $domainAdminData = [
             'json' => [
                 "items" => [
-                    "adm_" . str_replace(".", "", $a->getDomain())
+                    $this->generateUsername($a->getDomain())
                 ],
                 "attr" => [ 
                     "password" => $new,
