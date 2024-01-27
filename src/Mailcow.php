@@ -149,7 +149,6 @@ class Server_Manager_Mailcow extends Server_Manager
     public function createAccount(Server_Account $a)
     {
         $p = $a->getPackage();
-        $client = $a->getClient();
         // Prepare POST query
         $domainData = [
             'json' => [
@@ -185,8 +184,6 @@ class Server_Manager_Mailcow extends Server_Manager
             ];
             $result2 = $this->_makeRequest('POST', 'add/domain-admin', $domainAdminData);
             if (str_contains($result2, 'success')) {
-
-
                 $domainAclData = [
                     'json' => [
                         "items" => [
@@ -213,11 +210,7 @@ class Server_Manager_Mailcow extends Server_Manager
 
                     throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
 
-
                 } 
-
-
-
 
             }
             else {
@@ -308,7 +301,18 @@ class Server_Manager_Mailcow extends Server_Manager
 
                 throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
 
-        } */
+            } */
+        } else if (str_contains($result1, 'domain_not_empty')) {
+            $mailboxes = array_column(json_decode($this->_makeRequest('GET', 'get/mailbox/all/' . $a->getDomain())), "username");
+            $mailboxesData = [
+                'json' => $mailboxes
+            ];
+            $result2 = $this->_makeRequest('POST', 'delete/mailbox', $mailboxesData);
+            if(!str_contains($result2, 'success')) {
+                $placeholders = [':action:' => __trans('delete mailbox'), ':type:' => 'Mailcow'];
+                throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);        
+            }
+            return $this->cancelAccount($a);
         } else {
             $placeholders = [':action:' => __trans('delete user'), ':type:' => 'Mailcow'];
 
