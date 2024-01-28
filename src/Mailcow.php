@@ -303,14 +303,29 @@ class Server_Manager_Mailcow extends Server_Manager
 
             } */
         } else if (str_contains($result1, 'domain_not_empty')) {
-            $mailboxes = array_column(json_decode($this->_makeRequest('GET', 'get/mailbox/all/' . $a->getDomain())), "username");
-            $mailboxesData = [
-                'json' => $mailboxes
-            ];
-            $result2 = $this->_makeRequest('POST', 'delete/mailbox', $mailboxesData);
-            if(!str_contains($result2, 'success')) {
-                $placeholders = [':action:' => __trans('delete mailbox'), ':type:' => 'Mailcow'];
-                throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);        
+            $mailboxes = json_decode($this->_makeRequest('GET', 'get/mailbox/all/' . $a->getDomain()), true);
+            if(count($mailboxes) > 0) {
+                $mailboxesData = [
+                    'json' => array_column(array_filter($mailboxes, function($item) use ($a) { return $item['domain'] == $a->getDomain(); }), 'username')
+                ];
+                $result2 = $this->_makeRequest('POST', 'delete/mailbox', $mailboxesData);
+                if(!str_contains($result2, 'success')) {
+
+                    $placeholders = [':action:' => __trans('delete mailbox'), ':type:' => 'Mailcow'];
+                    throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);        
+                }
+            }
+
+            $resources = json_decode($this->_makeRequest('GET', 'get/resource/all'), true);
+            if(count($resources) > 0) {
+                $resourcesData = [
+                    'json' => array_column(array_filter($resources, function($item) use ($a) { return $item['domain'] == $a->getDomain(); }), 'name')
+                ];
+                $result3 = $this->_makeRequest('POST', 'delete/resource', $resourcesData);
+                if(!str_contains($result3, 'success')) {
+                    $placeholders = [':action:' => __trans('delete domain'), ':type:' => 'Mailcow'];
+                    throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);        
+                }
             }
             return $this->cancelAccount($a);
         } else {
