@@ -56,7 +56,7 @@ class Server_Manager_Mailcow extends Server_Manager
      *
      * @return string
      */
-    public function getLoginUrl(Server_Account $account = null)
+    public function getLoginUrl(?Server_Account $account = null)
     {
         return 'https://' . $this->_config['host'] . '/';
     }
@@ -66,7 +66,7 @@ class Server_Manager_Mailcow extends Server_Manager
      *
      * @return string
      */
-    public function getResellerLoginUrl(Server_Account $account = null)
+    public function getResellerLoginUrl(?Server_Account $account = null)
     {
         return $this->getLoginUrl();
     }
