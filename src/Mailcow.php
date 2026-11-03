@@ -234,6 +234,21 @@ class Server_Manager_Mailcow extends Server_Manager
         return $attr;
     }
 
+    /**
+     * This method is called to check if configuration is correct
+     * and class can connect to server.
+     *
+     * @return bool
+     */
+    public function testConnection()
+    {
+        $result = $this->_makeRequest('GET', 'get/status/version');
+        if (is_array($result['data']) && isset($result['data']['version'])) {
+            return true;
+        }
+
+        throw new Server_Exception('Failed to connect to the :type: server. Please verify your credentials and configuration', [':type:' => 'Mailcow']);
+    }
 
     /**
      * Create new account on server.
