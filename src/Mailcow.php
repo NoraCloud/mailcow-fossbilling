@@ -10,6 +10,9 @@
  */
 class Server_Manager_Mailcow extends Server_Manager
 {
+    /** Max passes when emptying a domain before deleting it. */
+    private const CANCEL_MAX_ATTEMPTS = 3;
+
     /**
      * Method is called just after object construct is complete.
      * Add required parameters checks here.
@@ -326,64 +329,63 @@ class Server_Manager_Mailcow extends Server_Manager
      */
     public function cancelAccount(Server_Account $a)
     {
-        // Prepare POST query
-        $domainData = [
-            'json' => [
-                $a->getDomain(),
-            ]
-        ];
-        // Delete domain on mailcow
-        $result1 = $this->_makeRequest('POST', 'delete/domain', $domainData);
-        if (str_contains($result1, 'success')) {
-            // Delete Domain Admin in mailcow
-            $domainAdminData = [
-                'json' => [
-                    $this->generateUsername($a->getDomain()),
-                ]
-            ];
-            /*
-             *    NOTE : THE DOMAIN ADMIN SEEMS TO BE DELETE WHEN DELETEING DOMAIN
-             *
-             * $result2 = $this->_makeRequest('POST', 'delete/domain-admin', $domainAdminData);
+        $domain = $a->getDomain();
 
-            if (! str_contains($result2, 'success')) {
-                $placeholders = [':action:' => __trans('delete domain'), ':type:' => 'Mailcow'];
+        for ($attempt = 1; $attempt <= self::CANCEL_MAX_ATTEMPTS; ++$attempt) {
+            $result = $this->_makeRequest('POST', 'delete/domain', ['json' => [$domain]]);
 
-                throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
-
-            } */
-        } else if (str_contains($result1, 'domain_not_empty')) {
-            $mailboxes = json_decode($this->_makeRequest('GET', 'get/mailbox/all/' . $a->getDomain()), true);
-            if(count($mailboxes) > 0) {
-                $mailboxesData = [
-                    'json' => array_column(array_filter($mailboxes, function($item) use ($a) { return $item['domain'] == $a->getDomain(); }), 'username')
-                ];
-                $result2 = $this->_makeRequest('POST', 'delete/mailbox', $mailboxesData);
-                if(!str_contains($result2, 'success')) {
-
-                    $placeholders = [':action:' => __trans('delete mailbox'), ':type:' => 'Mailcow'];
-                    throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);        
+            if ($this->_isSuccess($result)) {
+                // The domain admin is normally removed with the domain; clean up if it was not.
+                try {
+                    $this->_makeRequest('POST', 'delete/domain-admin', ['json' => [$this->generateUsername($domain)]]);
+                } catch (\Throwable $e) {
+                    // ignore: already deleted
                 }
+
+                return true;
             }
 
-            $resources = json_decode($this->_makeRequest('GET', 'get/resource/all'), true);
-            if(count($resources) > 0) {
-                $resourcesData = [
-                    'json' => array_column(array_filter($resources, function($item) use ($a) { return $item['domain'] == $a->getDomain(); }), 'name')
-                ];
-                $result3 = $this->_makeRequest('POST', 'delete/resource', $resourcesData);
-                if(!str_contains($result3, 'success')) {
-                    $placeholders = [':action:' => __trans('delete domain'), ':type:' => 'Mailcow'];
-                    throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);        
-                }
+            if (!str_contains($result['raw'], 'domain_not_empty')) {
+                $this->_fail('delete domain');
             }
-            return $this->cancelAccount($a);
-        } else {
-            $placeholders = [':action:' => __trans('delete user'), ':type:' => 'Mailcow'];
 
-            throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
-        }       
-        return true;
+            $this->_emptyDomain($domain);
+        }
+
+        $this->_fail('delete domain');
+    }
+
+    /**
+     * Delete everything that prevents a domain from being removed.
+     */
+    private function _emptyDomain(string $domain): void
+    {
+        // Mailboxes (also removes their own aliases)
+        $mailboxes = $this->_list($this->_makeRequest('GET', 'get/mailbox/all/' . rawurlencode($domain)));
+        $usernames = array_column($mailboxes, 'username');
+        if ($usernames) {
+            if (!$this->_isSuccess($this->_makeRequest('POST', 'delete/mailbox', ['json' => array_values($usernames)]))) {
+                $this->_fail('delete mailbox');
+            }
+        }
+
+        // Remaining aliases
+        $aliases = $this->_list($this->_makeRequest('GET', 'get/alias/all'));
+        $aliasIds = array_column(array_filter($aliases, fn ($item) => ($item['domain'] ?? null) === $domain), 'id');
+        if ($aliasIds) {
+            if (!$this->_isSuccess($this->_makeRequest('POST', 'delete/alias', ['json' => array_values($aliasIds)]))) {
+                $this->_fail('delete alias');
+            }
+        }
+
+        // Resources
+        $resources = $this->_list($this->_makeRequest('GET', 'get/resource/all'));
+        $resourceNames = array_column(array_filter($resources, fn ($item) => ($item['domain'] ?? null) === $domain), 'name');
+        if ($resourceNames) {
+            if (!$this->_isSuccess($this->_makeRequest('POST', 'delete/resource', ['json' => array_values($resourceNames)]))) {
+                $this->_fail('delete resource');
+            }
+        }
     }
 
     /**
