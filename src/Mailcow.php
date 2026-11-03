@@ -11,7 +11,7 @@
 class Server_Manager_Mailcow extends Server_Manager
 {
     /**
-     * Method is called just after obejct contruct is complete.
+     * Method is called just after object construct is complete.
      * Add required parameters checks here.
      */
     public function init()
@@ -88,7 +88,12 @@ class Server_Manager_Mailcow extends Server_Manager
         return $this->getLoginUrl();
     }
 
-    private function _makeRequest($type, $path, $params = [])
+    /**
+     * Send a request to the Mailcow API.
+     *
+     * @return array{status:int, data:mixed, raw:string}
+     */
+    private function _makeRequest(string $type, string $path, array $params = []): array
     {
         $host = 'https://' . $this->_config['host'] . '/api/v1/';
 
@@ -110,8 +115,6 @@ class Server_Manager_Mailcow extends Server_Manager
 
         if (str_contains($result, 'authentication failed')) {
             throw new Server_Exception('Failed to connect to the :type: server. Please verify your credentials and configuration', [':type:' => 'Mailcow']);
-        } elseif (str_contains($result, 'error')) {
-            error_log("Mailcow returned error $result for the " . $path . ' command');
         }
 
         return $result;
@@ -132,16 +135,12 @@ class Server_Manager_Mailcow extends Server_Manager
      */
     public function testConnection()
     {
-
-        // Make request and check sys info
         $result = $this->_makeRequest('GET', 'get/status/version');
         if (str_contains($result, 'version')) {
             return true;
-        } else {
-            throw new Server_Exception('Failed to connect to the :type: server. Please verify your credentials and configuration', [':type:' => 'Mailcow']);
         }
 
-        return true;
+        throw new Server_Exception('Failed to connect to the :type: server. Please verify your credentials and configuration', [':type:' => 'Mailcow']);
     }
 
     /**
@@ -153,11 +152,8 @@ class Server_Manager_Mailcow extends Server_Manager
     public function synchronizeAccount(Server_Account $a)
     {
         $this->getLog()->info('Synchronizing account with server ' . $a->getUsername());
-        $new = clone $a;
 
-        // @example - retrieve username from server and set it to cloned object
-        // $new->setUsername('newusername');
-        return $new;
+        return clone $a;
     }
 
     /**
@@ -403,12 +399,10 @@ class Server_Manager_Mailcow extends Server_Manager
     {
         $domainAdminData = [
             'json' => [
-                "items" => [
-                    $this->generateUsername($a->getDomain())
-                ],
-                "attr" => [ 
-                    "password" => $new,
-                    "password2" => $new
+                'items' => [$this->generateUsername($a->getDomain())],
+                'attr' => [
+                    'password' => $new,
+                    'password2' => $new,
                 ],
             ],
         ];
