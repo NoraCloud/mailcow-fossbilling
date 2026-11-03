@@ -184,6 +184,32 @@ class Server_Manager_Mailcow extends Server_Manager
     }
 
     /**
+     * Return list-type GET data (always an array).
+     */
+    private function _list(array $result): array
+    {
+        return (is_array($result['data']) && !isset($result['data']['type'])) ? $result['data'] : [];
+    }
+
+    private function _fail(string $action): never
+    {
+        throw new Server_Exception(
+            'Failed to :action: on the :type: server, check the error logs for further details',
+            [':action:' => __trans($action), ':type:' => 'Mailcow']
+        );
+    }
+
+    /**
+     * Read a custom package value with a fallback default.
+     */
+    private function _custom(Server_Package $p, string $key, $default = null)
+    {
+        $value = $p->getCustomValue($key);
+
+        return ($value === null || $value === '') ? $default : $value;
+    }
+
+    /**
      * Build the domain limits shared by create and package change.
      */
     private function _packageAttributes(Server_Package $p): array
