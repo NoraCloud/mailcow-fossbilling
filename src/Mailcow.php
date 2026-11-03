@@ -120,11 +120,29 @@ class Server_Manager_Mailcow extends Server_Manager
         return $result;
     }
 
-    private function _getPackageName(Server_Package $package)
+    /**
+     * Build the domain limits shared by create and package change.
+     */
+    private function _packageAttributes(Server_Package $p): array
     {
-        $name = $package->getName();
+        $defQuota = $p->getQuota();
+        $maxQuota = $this->_custom($p, 'maxquota', $defQuota);
 
-        return $name;
+        $attr = [
+            'aliases' => $p->getMaxSubdomains(), // FOSSBilling "subdomains" limit is used as Mailcow alias limit
+            'defquota' => $defQuota,             // default per-mailbox quota (MiB)
+            'maxquota' => $maxQuota,             // max per-mailbox quota (MiB)
+            'quota' => $maxQuota,                // total domain quota (MiB)
+            'mailboxes' => $p->getMaxPop(),
+        ];
+
+        $rate = $this->_custom($p, 'ratelimit');
+        if ($rate !== null) {
+            $attr['rl_value'] = $rate;
+            $attr['rl_frame'] = 'h';
+        }
+
+        return $attr;
     }
 
     /**
@@ -354,16 +372,11 @@ class Server_Manager_Mailcow extends Server_Manager
      */
     public function changeAccountPackage(Server_Account $a, Server_Package $p)
     {
-        // Prepare POST query
-        $pacakgeData = [
+        $packageData = [
             'json' => [
-                "attr" =>  [
-                    "aliases" => $p->getMaxSubdomains(),
-                    "defquota" => $p->getQuota(),
-                    "mailboxes" => $p->getMaxPop(),
-                ],
-                "items" => $a->getDomain(),
-            ]
+                'attr' => $this->_packageAttributes($p),
+                'items' => [$a->getDomain()],
+            ],
         ];
         // Edit domain on mailcow
         $result = $this->_makeRequest('POST', 'edit/domain', $domainData);
