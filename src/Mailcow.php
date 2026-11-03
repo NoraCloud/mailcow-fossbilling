@@ -100,50 +100,39 @@ class Server_Manager_Mailcow extends Server_Manager
     {
         $host = 'https://' . $this->_config['host'] . '/api/v1/';
 
-        // Server headers
-        $headers['X-API-Key'] = $this->_config['accesshash'];
-        $headers['Content-Type'] = "application/json";
+        $headers = [
+            'X-API-Key' => $this->_config['accesshash'],
+            'Content-Type' => 'application/json',
+        ];
 
-        // Send POST query
-        $client = $this->getHttpClient()->withOptions([
-            'verify_peer' => false,
-            'verify_host' => false,
-            'timeout' => 25
-        ]);
-        $response = $client->request($type, $host . $path, [
-            'headers' => $headers,
-            ...$params 
-        ]);
-        $result = $response->getContent();
+        $insecure = ($this->_config['allow_self_signed'] ?? '0') === '1';
 
-        if (str_contains($result, 'authentication failed')) {
+        try {
+            $client = $this->getHttpClient()->withOptions([
+                'verify_peer' => !$insecure,
+                'verify_host' => !$insecure,
+                'timeout' => 25,
+            ]);
+            $response = $client->request($type, $host . $path, ['headers' => $headers] + $params);
+            $status = $response->getStatusCode();
+            // false = do not throw on 4xx/5xx, we want Mailcow's own error message
+            $raw = $response->getContent(false);
+        } catch (\Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface $e) {
+            error_log('Mailcow transport error for ' . $path . ': ' . $e->getMessage());
             throw new Server_Exception('Failed to connect to the :type: server. Please verify your credentials and configuration', [':type:' => 'Mailcow']);
         }
 
-        return $result;
-    }
+        if ($status === 401 || $status === 403 || str_contains($raw, 'authentication failed')) {
+            throw new Server_Exception('Failed to connect to the :type: server. Please verify your credentials and configuration', [':type:' => 'Mailcow']);
+        }
 
-    /**
-     * Build the domain limits shared by create and package change.
-     */
-    private function _packageAttributes(Server_Package $p): array
-    {
-        $defQuota = $p->getQuota();
-        $maxQuota = $this->_custom($p, 'maxquota', $defQuota);
-
-        $attr = [
-            'aliases' => $p->getMaxSubdomains(), // FOSSBilling "subdomains" limit is used as Mailcow alias limit
-            'defquota' => $defQuota,             // default per-mailbox quota (MiB)
-            'maxquota' => $maxQuota,             // max per-mailbox quota (MiB)
-            'quota' => $maxQuota,                // total domain quota (MiB)
-            'mailboxes' => $p->getMaxPop(),
-        ];
+        $data = json_decode($raw, true);
 
         if ($status >= 400 || !$this->_isSuccessOrData($data)) {
             error_log("Mailcow returned HTTP $status with body $raw for the $path command");
         }
 
-        return $attr;
+        return ['status' => $status, 'data' => $data, 'raw' => $raw];
     }
 
     /**
