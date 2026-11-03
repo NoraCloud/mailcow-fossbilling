@@ -158,6 +158,22 @@ class Server_Manager_Mailcow extends Server_Manager
     }
 
     /**
+     * Normalize a Mailcow action response to a list of entries.
+     * Mailcow returns either [{type,msg},...] or a single {type,msg} object.
+     */
+    private function _entries($data): array
+    {
+        if (!is_array($data)) {
+            return [];
+        }
+        if (isset($data['type'])) {
+            return [$data];
+        }
+
+        return array_values(array_filter($data, 'is_array'));
+    }
+
+    /**
      * True only when the response has at least one entry and all are "success".
      */
     private function _isSuccess(array $result): bool
