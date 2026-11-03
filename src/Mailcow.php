@@ -136,42 +136,43 @@ class Server_Manager_Mailcow extends Server_Manager
             'mailboxes' => $p->getMaxPop(),
         ];
 
-        $rate = $this->_custom($p, 'ratelimit');
-        if ($rate !== null) {
-            $attr['rl_value'] = $rate;
-            $attr['rl_frame'] = 'h';
+        if ($status >= 400 || !$this->_isSuccessOrData($data)) {
+            error_log("Mailcow returned HTTP $status with body $raw for the $path command");
         }
 
         return $attr;
     }
 
     /**
-     * This method is called to check if configuration is correct
-     * and class can connect to server.
-     *
-     * @return bool
+     * True if a response is not an explicit Mailcow error (used only for logging).
      */
-    public function testConnection()
+    private function _isSuccessOrData($data): bool
     {
-        $result = $this->_makeRequest('GET', 'get/status/version');
-        if (str_contains($result, 'version')) {
-            return true;
+        foreach ($this->_entries($data) as $entry) {
+            if (($entry['type'] ?? null) === 'error' || ($entry['type'] ?? null) === 'danger') {
+                return false;
+            }
         }
 
-        throw new Server_Exception('Failed to connect to the :type: server. Please verify your credentials and configuration', [':type:' => 'Mailcow']);
+        return true;
     }
 
     /**
-     * Methods retrieves information from server, assign's new values to
-     * cloned Server_Account object and returns it.
-     *
-     * @return Server_Account
+     * True only when the response has at least one entry and all are "success".
      */
-    public function synchronizeAccount(Server_Account $a)
+    private function _isSuccess(array $result): bool
     {
-        $this->getLog()->info('Synchronizing account with server ' . $a->getUsername());
+        $entries = $this->_entries($result['data']);
+        if ($result['status'] >= 400 || !$entries) {
+            return false;
+        }
+        foreach ($entries as $entry) {
+            if (($entry['type'] ?? null) !== 'success') {
+                return false;
+            }
+        }
 
-        return clone $a;
+        return true;
     }
 
     /**
@@ -378,31 +379,12 @@ class Server_Manager_Mailcow extends Server_Manager
                 'items' => [$a->getDomain()],
             ],
         ];
-        // Edit domain on mailcow
-        $result = $this->_makeRequest('POST', 'edit/domain', $domainData);
-        if (!str_contains($result, 'success')) {
-            $placeholders = [':action:' => __trans('change account package'), ':type:' => 'Mailcow'];
 
-            throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
-        } 
+        if (!$this->_isSuccess($this->_makeRequest('POST', 'edit/domain', $packageData))) {
+            $this->_fail('change account package');
+        }
 
         return true;
-    }
-
-    /**
-     * Change account username on server.
-     */
-    public function changeAccountUsername(Server_Account $a, $new): never
-    {
-        throw new Server_Exception(':type: does not support :action:', [':type:' => 'Mailcow', ':action:' => __trans('username changes')]);
-    }
-
-    /**
-     * Change account domain on server.
-     */
-    public function changeAccountDomain(Server_Account $a, $new): never
-    {
-        throw new Server_Exception(':type: does not support :action:', [':type:' => 'Mailcow', ':action:' => __trans('changing the account domain')]);
     }
 
     /**
@@ -419,12 +401,9 @@ class Server_Manager_Mailcow extends Server_Manager
                 ],
             ],
         ];
-        // Make request and change password
-        $result = $this->_makeRequest('POST', 'edit/domain-admin', $domainAdminData);
-        if (! str_contains($result, 'success')) {
-            $placeholders = [':action:' => __trans('change account password'), ':type:' => 'Mailcow'];
 
-            throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
+        if (!$this->_isSuccess($this->_makeRequest('POST', 'edit/domain-admin', $domainAdminData))) {
+            $this->_fail('change account password');
         }
 
         return true;
