@@ -16,6 +16,12 @@ class Server_Manager_Mailcow extends Server_Manager
      */
     public function init()
     {
+        if (empty($this->_config['host'])) {
+            throw new Server_Exception('The ":server_manager" server manager is not fully configured. Please configure the :missing', [':server_manager' => 'Mailcow', ':missing' => 'hostname'], 2001);
+        }
+        if (empty($this->_config['accesshash'])) {
+            throw new Server_Exception('The ":server_manager" server manager is not fully configured. Please configure the :missing', [':server_manager' => 'Mailcow', ':missing' => 'API key'], 2001);
+        }
     }
 
     /**
@@ -34,6 +40,17 @@ class Server_Manager_Mailcow extends Server_Manager
                             'label' => 'API Key',
                             'placeholder' => 'API Key to authenticate Mailcow service',
                             'required' => true,
+                        ],
+                        [
+                            'name' => 'allow_self_signed',
+                            'type' => 'radio',
+                            'label' => 'Allow self-signed / invalid TLS certificate (insecure)',
+                            'options' => [
+                                '0' => 'No (recommended)',
+                                '1' => 'Yes',
+                            ],
+                            'default_value' => '0',
+                            'required' => false,
                         ],
                     ],
                 ],
