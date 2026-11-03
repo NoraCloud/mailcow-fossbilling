@@ -264,20 +264,8 @@ class Server_Manager_Mailcow extends Server_Manager
      */
     public function suspendAccount(Server_Account $a)
     {
-        $domainData = [
-            'json' => [
-                "attr" => [
-                    "active" => "0",
-                ],
-                "items" => $a->getDomain(),
-            ]
-        ];
-        // Make request and suspend user
-        $result = $this->_makeRequest('POST', 'edit/domain', $domainData);
-        if (!str_contains($result, 'success')) {
-            $placeholders = [':action:' => __trans('suspend account'), ':type:' => 'Mailcow'];
-            throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
-        }
+        $this->_setActive($a, '0', 'suspend account');
+
         return true;
     }
 
@@ -286,21 +274,35 @@ class Server_Manager_Mailcow extends Server_Manager
      */
     public function unsuspendAccount(Server_Account $a)
     {
+        $this->_setActive($a, '1', 'unsuspend account');
+
+        return true;
+    }
+
+    /**
+     * Activate / deactivate both the domain and its domain admin.
+     */
+    private function _setActive(Server_Account $a, string $active, string $action): void
+    {
         $domainData = [
             'json' => [
-                "attr" => [
-                    "active" => "1",
-                ],
-                "items" => $a->getDomain(),
-            ]
+                'attr' => ['active' => $active],
+                'items' => [$a->getDomain()],
+            ],
         ];
-        // Make request and suspend user
-        $result = $this->_makeRequest('POST', 'edit/domain', $domainData);
-        if (!str_contains($result, 'success')) {
-            $placeholders = [':action:' => __trans('unsuspend account'), ':type:' => 'Mailcow'];
-            throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
+        if (!$this->_isSuccess($this->_makeRequest('POST', 'edit/domain', $domainData))) {
+            $this->_fail($action);
         }
-        return true;
+
+        $adminData = [
+            'json' => [
+                'attr' => ['active' => $active],
+                'items' => [$this->generateUsername($a->getDomain())],
+            ],
+        ];
+        if (!$this->_isSuccess($this->_makeRequest('POST', 'edit/domain-admin', $adminData))) {
+            $this->_fail($action);
+        }
     }
 
     /**
