@@ -256,82 +256,80 @@ class Server_Manager_Mailcow extends Server_Manager
     public function createAccount(Server_Account $a)
     {
         $p = $a->getPackage();
-        // Prepare POST query
+        $domain = $a->getDomain();
+        $adminUser = $this->generateUsername($domain);
+
         $domainData = [
             'json' => [
-                "active" => "1",
-                "aliases" => $p->getMaxSubdomains(),
-                "backupmx" => "0",
-                "gal" => true,
-                "defquota" => $p->getQuota(),
-                "description" => $a->getDomain() . " domain",
-                "domain" => $a->getDomain(),
-                "mailboxes" => $p->getMaxPop(),
-                "maxquota" => $p->getCustomValue('maxquota'),
-                "quota" => $p->getCustomValue('maxquota'),
-                "relay_all_recipients" => "0",
-                "rl_frame" => "h",
-                "rl_value" => $p->getCustomValue('ratelimit'),
-                "restart_sogo" => "10",
-            ]
+                'active' => '1',
+                'backupmx' => '0',
+                'gal' => '1',
+                'description' => $domain . ' domain',
+                'domain' => $domain,
+                'relay_all_recipients' => '0',
+                'restart_sogo' => '10',
+            ] + $this->_packageAttributes($p),
         ];
 
-        // Create domain on mailcow
-        $result1 = $this->_makeRequest('POST', 'add/domain', $domainData);
-        if (str_contains($result1, 'success')) {
-            // Create Domain Admin in mailcow
-            $domainAdminData = [
-                'json' => [
-                    "active" => "1",
-                    "domains" => $a->getDomain(),
-                    "password" => $a->getPassword(),
-                    "password2" => $a->getPassword(),
-                    "username" => $this->generateUsername($a->getDomain())
-                ]
-            ];
-            $result2 = $this->_makeRequest('POST', 'add/domain-admin', $domainAdminData);
-            if (str_contains($result2, 'success')) {
-                $domainAclData = [
-                    'json' => [
-                        "items" => [
-                            $this->generateUsername($a->getDomain())
-                        ],
-                        "attr" => [
-                            "da_acl" => [
-                                "quarantine",
-                                "login_as",
-                                "sogo_access",
-                                "app_passwds",
-                                "bcc_maps",
-                                "filters",
-                                "spam_policy",
-                                "protocol_access",
-                                "smtp_ip_access",
-                            ]
-                        ]
-                    ]
-                ];
-                $result3 = $this->_makeRequest('POST', 'edit/da-acl', $domainAclData);
-                if (!str_contains($result3, 'success')) {
-                    $placeholders = [':action:' => 'edit ACL', ':type:' => 'Mailcow'];
-
-                    throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
-
-                } 
-
-            }
-            else {
-                $placeholders = [':action:' => __trans('create domain'), ':type:' => 'Mailcow'];
-
-                throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
-            }
-
-        } else {
-            $placeholders = [':action:' => __trans('create user'), ':type:' => 'Mailcow'];
-
-            throw new Server_Exception('Failed to :action: on the :type: server, check the error logs for further details', $placeholders);
+        // 1. Create domain
+        if (!$this->_isSuccess($this->_makeRequest('POST', 'add/domain', $domainData))) {
+            $this->_fail('create domain');
         }
+
+        // 2. Create domain admin
+        $domainAdminData = [
+            'json' => [
+                'active' => '1',
+                'domains' => $domain,
+                'password' => $a->getPassword(),
+                'password2' => $a->getPassword(),
+                'username' => $adminUser,
+            ],
+        ];
+        if (!$this->_isSuccess($this->_makeRequest('POST', 'add/domain-admin', $domainAdminData))) {
+            $this->_rollbackCreate($domain, $adminUser);
+            $this->_fail('create domain admin');
+        }
+
+        // 3. Set domain admin ACL
+        $domainAclData = [
+            'json' => [
+                'items' => [$adminUser],
+                'attr' => [
+                    'da_acl' => [
+                        'quarantine',
+                        'login_as',
+                        'sogo_access',
+                        'app_passwds',
+                        'bcc_maps',
+                        'filters',
+                        'spam_policy',
+                        'protocol_access',
+                        'smtp_ip_access',
+                    ],
+                ],
+            ],
+        ];
+        if (!$this->_isSuccess($this->_makeRequest('POST', 'edit/da-acl', $domainAclData))) {
+            $this->_rollbackCreate($domain, $adminUser);
+            $this->_fail('edit ACL');
+        }
+
         return true;
+    }
+
+    /**
+     * Best-effort cleanup after a partially failed createAccount().
+     * Never throws, so the original error is the one reported.
+     */
+    private function _rollbackCreate(string $domain, string $adminUser): void
+    {
+        try {
+            $this->_makeRequest('POST', 'delete/domain-admin', ['json' => [$adminUser]]);
+            $this->_makeRequest('POST', 'delete/domain', ['json' => [$domain]]);
+        } catch (\Throwable $e) {
+            error_log('Mailcow rollback failed for ' . $domain . ': ' . $e->getMessage());
+        }
     }
 
     /**
