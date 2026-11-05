@@ -44,17 +44,6 @@ class Server_Manager_Mailcow extends Server_Manager
                             'placeholder' => 'API Key to authenticate Mailcow service',
                             'required' => true,
                         ],
-                        [
-                            'name' => 'allow_self_signed',
-                            'type' => 'radio',
-                            'label' => 'Allow self-signed / invalid TLS certificate (insecure)',
-                            'options' => [
-                                '0' => 'No (recommended)',
-                                '1' => 'Yes',
-                            ],
-                            'default_value' => '0',
-                            'required' => false,
-                        ],
                     ],
                 ],
             ],
