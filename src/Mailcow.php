@@ -484,6 +484,22 @@ class Server_Manager_Mailcow extends Server_Manager
     }
 
     /**
+     * Change account username on server.
+     */
+    public function changeAccountUsername(Server_Account $a, $new): never
+    {
+        throw new Server_Exception(':type: does not support :action:', [':type:' => 'Mailcow', ':action:' => __trans('username changes')]);
+    }
+
+    /**
+     * Change account domain on server.
+     */
+    public function changeAccountDomain(Server_Account $a, $new): never
+    {
+        throw new Server_Exception(':type: does not support :action:', [':type:' => 'Mailcow', ':action:' => __trans('changing the account domain')]);
+    }
+
+    /**
      * Change account IP on server.
      */
     public function changeAccountIp(Server_Account $a, $new): never
