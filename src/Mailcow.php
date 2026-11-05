@@ -442,6 +442,16 @@ class Server_Manager_Mailcow extends Server_Manager
         }
     }
 
+    public function synchronizeAccount(Server_Account $a)
+    {
+        $this->getLog()->info('Synchronizing account with server ' . $a->getUsername());
+        $new = clone $a;
+
+        // @example - retrieve username from server and set it to cloned object
+        // $new->setUsername('newusername');
+        return $new;
+    }
+
     /**
      * Change account package on server.
      */
